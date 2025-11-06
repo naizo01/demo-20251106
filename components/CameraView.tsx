@@ -154,6 +154,7 @@ export default function CameraView({ isOn }: CameraViewProps) {
         // 頭の真ん中は、頭の上から顔の高さの約0.2倍下の位置
         const headCenterY = headTopY + faceHeight * 0.2;
 
+        // 位置を更新（毎フレーム更新してスムーズに追従）
         setFacePosition({
           x: faceCenterX, // 顔の中心X座標
           y: headCenterY, // 頭の真ん中のY座標
