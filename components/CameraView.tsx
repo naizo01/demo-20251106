@@ -5,7 +5,6 @@ import {
   FilesetResolver,
   FaceLandmarker,
   FaceLandmarkerResult,
-  VisionRunningMode,
 } from "@mediapipe/tasks-vision";
 import HelicopterOverlay from "./HelicopterOverlay";
 
@@ -89,7 +88,8 @@ export default function CameraView({ isOn }: CameraViewProps) {
   };
 
   // 顔検出と描画のループ
-  const detectFace = async () => {
+  const detectFace = () => {
+    // コンポーネントがアンマウントされている場合は停止
     if (!videoRef.current || !canvasRef.current || !faceLandmarkerRef.current) {
       return;
     }
@@ -98,7 +98,13 @@ export default function CameraView({ isOn }: CameraViewProps) {
     const canvas = canvasRef.current;
     const ctx = canvas.getContext("2d");
 
-    if (!ctx || video.readyState !== video.HAVE_ENOUGH_DATA) {
+    if (!ctx) {
+      animationFrameRef.current = requestAnimationFrame(detectFace);
+      return;
+    }
+
+    // ビデオが準備できていない場合はスキップ
+    if (video.readyState !== video.HAVE_ENOUGH_DATA) {
       animationFrameRef.current = requestAnimationFrame(detectFace);
       return;
     }
@@ -149,14 +155,18 @@ export default function CameraView({ isOn }: CameraViewProps) {
         setFacePosition(null);
       }
     } catch (err) {
+      // エラーが発生してもループを継続（一時的なエラーの可能性）
       console.error("顔検出エラー:", err);
     }
 
+    // 次のフレームをリクエスト
     animationFrameRef.current = requestAnimationFrame(detectFace);
   };
 
   useEffect(() => {
     let stream: MediaStream | null = null;
+    let isMounted = true;
+    let metadataHandler: (() => void) | null = null;
 
     const setup = async () => {
       try {
@@ -171,26 +181,55 @@ export default function CameraView({ isOn }: CameraViewProps) {
           },
         });
 
-        if (!videoRef.current || !canvasRef.current) {
+        if (!isMounted || !videoRef.current || !canvasRef.current) {
+          // コンポーネントがアンマウントされた場合はストリームを停止
+          if (stream) {
+            stream.getTracks().forEach((track) => track.stop());
+          }
           return;
         }
 
         const video = videoRef.current;
         const canvas = canvasRef.current;
 
+        // ストリームを設定
         video.srcObject = stream;
-        await video.play();
 
-        // Canvasサイズをビデオに合わせる
-        video.addEventListener("loadedmetadata", () => {
+        // Canvasサイズをビデオに合わせる（loadedmetadataイベントで処理）
+        metadataHandler = () => {
+          if (!isMounted || !video || !canvas) return;
           canvas.width = video.videoWidth;
           canvas.height = video.videoHeight;
-        });
+        };
+        video.addEventListener("loadedmetadata", metadataHandler);
+
+        // ビデオの再生（エラーハンドリング付き）
+        try {
+          await video.play();
+        } catch (playError) {
+          // play()エラーを無視（ストリームが既に停止されている場合など）
+          console.warn("ビデオ再生エラー（無視）:", playError);
+          if (!isMounted) return;
+        }
+
+        if (!isMounted) {
+          if (stream) {
+            stream.getTracks().forEach((track) => track.stop());
+          }
+          return;
+        }
 
         // MediaPipe Face Landmarkerの初期化
         const vision = await FilesetResolver.forVisionTasks(
           "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm"
         );
+
+        if (!isMounted) {
+          if (stream) {
+            stream.getTracks().forEach((track) => track.stop());
+          }
+          return;
+        }
 
         const faceLandmarker = await FaceLandmarker.createFromOptions(vision, {
           baseOptions: {
@@ -198,12 +237,20 @@ export default function CameraView({ isOn }: CameraViewProps) {
             delegate: "GPU",
           },
           outputFaceBlendshapes: false,
-          runningMode: VisionRunningMode.LIVE_STREAM,
+          runningMode: "VIDEO" as const,
           numFaces: 1,
           minFaceDetectionConfidence: 0.5,
           minFacePresenceConfidence: 0.5,
           minTrackingConfidence: 0.5,
         });
+
+        if (!isMounted) {
+          faceLandmarker.close();
+          if (stream) {
+            stream.getTracks().forEach((track) => track.stop());
+          }
+          return;
+        }
 
         faceLandmarkerRef.current = faceLandmarker;
         setIsLoading(false);
@@ -212,12 +259,18 @@ export default function CameraView({ isOn }: CameraViewProps) {
         detectFace();
       } catch (err) {
         console.error("初期化エラー:", err);
-        setError(
-          err instanceof Error
-            ? err.message
-            : "初期化に失敗しました"
-        );
-        setIsLoading(false);
+        if (isMounted) {
+          setError(
+            err instanceof Error
+              ? err.message
+              : "初期化に失敗しました"
+          );
+          setIsLoading(false);
+        }
+        // エラー時もストリームをクリーンアップ
+        if (stream) {
+          stream.getTracks().forEach((track) => track.stop());
+        }
       }
     };
 
@@ -225,22 +278,46 @@ export default function CameraView({ isOn }: CameraViewProps) {
 
     // クリーンアップ
     return () => {
+      isMounted = false;
+
+      // アニメーションフレームをキャンセル
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current);
+        animationFrameRef.current = null;
       }
+
+      // ビデオ要素のクリーンアップ
+      if (videoRef.current) {
+        const video = videoRef.current;
+        if (metadataHandler) {
+          video.removeEventListener("loadedmetadata", metadataHandler);
+        }
+        video.srcObject = null;
+        video.pause();
+      }
+
+      // ストリームの停止
       if (stream) {
-        stream.getTracks().forEach((track) => track.stop());
+        stream.getTracks().forEach((track) => {
+          track.stop();
+        });
+        stream = null;
       }
-      faceLandmarkerRef.current = null;
+
+      // FaceLandmarkerのクリーンアップ
+      if (faceLandmarkerRef.current) {
+        faceLandmarkerRef.current.close();
+        faceLandmarkerRef.current = null;
+      }
     };
   }, []);
 
   return (
-    <div className="relative w-[640px] h-[480px] rounded-lg shadow-lg bg-gray-100 overflow-hidden">
+    <div className="relative w-full max-w-[640px] h-auto aspect-[4/3] rounded-3xl shadow-2xl bg-white overflow-hidden border-8 border-white">
       {/* カメラ映像 */}
       {error ? (
-        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-200 to-gray-300">
-          <div className="text-center text-gray-500">
+        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-pink-200 via-purple-200 to-blue-200">
+          <div className="text-center text-purple-600">
             <svg
               className="w-24 h-24 mx-auto mb-4"
               fill="none"
@@ -254,8 +331,8 @@ export default function CameraView({ isOn }: CameraViewProps) {
                 d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
               />
             </svg>
-            <p className="text-sm font-medium mb-2">エラーが発生しました</p>
-            <p className="text-xs text-gray-400">{error}</p>
+            <p className="text-lg font-bold mb-2">エラーが発生しました</p>
+            <p className="text-sm text-purple-500">{error}</p>
           </div>
         </div>
       ) : (
@@ -274,16 +351,16 @@ export default function CameraView({ isOn }: CameraViewProps) {
             style={{ transform: "scaleX(-1)" }} // ミラー表示
           />
           {isLoading && (
-            <div className="absolute inset-0 flex items-center justify-center bg-gray-900 bg-opacity-50 z-20">
-              <div className="text-center text-white">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
-                <p className="text-sm">カメラに接続中...</p>
+            <div className="absolute inset-0 flex items-center justify-center bg-purple-600 bg-opacity-40 z-20 backdrop-blur-sm">
+              <div className="text-center text-white bg-white bg-opacity-20 rounded-3xl px-8 py-6 backdrop-blur-md border-2 border-white border-opacity-40">
+                <div className="animate-spin rounded-full h-16 w-16 border-4 border-white border-t-transparent mx-auto mb-4"></div>
+                <p className="text-base font-bold">カメラに接続中...</p>
               </div>
             </div>
           )}
           {!faceDetected && !isLoading && (
-            <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-30 z-10 pointer-events-none">
-              <p className="text-white text-sm bg-black bg-opacity-50 px-4 py-2 rounded">
+            <div className="absolute inset-0 flex items-center justify-center bg-purple-500 bg-opacity-20 z-10 pointer-events-none">
+              <p className="text-purple-800 text-base font-bold bg-white bg-opacity-90 px-6 py-3 rounded-full shadow-lg border-4 border-purple-200">
                 顔をカメラに向けてください
               </p>
             </div>

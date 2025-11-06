@@ -14,14 +14,14 @@ export default function HomePage() {
   };
 
   return (
-    <div className="min-h-screen bg-white flex flex-col items-center justify-center px-6 py-8">
+    <div className="min-h-screen bg-gradient-to-br from-pink-100 via-purple-100 to-blue-100 flex flex-col items-center justify-center px-4 py-4 sm:px-6 sm:py-8">
       <Header />
-      
+
       <div className="flex flex-col items-center gap-6 flex-1 justify-center">
         <CameraView isOn={isOn} />
         <ToggleButton isOn={isOn} onClick={handleToggle} />
       </div>
-      
+
       <Footer />
     </div>
   );

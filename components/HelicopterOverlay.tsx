@@ -59,64 +59,60 @@ function HelicopterIcon() {
   return (
     <svg
       viewBox="0 0 100 100"
-      className="w-full h-full"
+      className="w-full h-full drop-shadow-lg animate-bounce-slow"
       xmlns="http://www.w3.org/2000/svg"
     >
-      {/* ヘリコプターのボディ */}
-      <rect x="20" y="40" width="60" height="30" rx="5" fill="#3B82F6" />
-      {/* コックピット */}
-      <ellipse cx="35" cy="45" rx="8" ry="10" fill="#60A5FA" />
-      {/* メインローター */}
-      <line
-        x1="50"
-        y1="20"
-        x2="50"
-        y2="40"
-        stroke="#1E40AF"
-        strokeWidth="3"
-      />
-      <line
-        x1="30"
-        y1="20"
-        x2="70"
-        y2="20"
-        stroke="#1E40AF"
+      {/* プロペラの軸 */}
+      <rect
+        x="47"
+        y="55"
+        width="6"
+        height="25"
+        rx="3"
+        fill="#FF69B4"
+        stroke="#FF1493"
         strokeWidth="2"
       />
-      {/* テールローター */}
-      <line
-        x1="80"
-        y1="55"
-        x2="90"
-        y2="55"
-        stroke="#1E40AF"
-        strokeWidth="2"
-      />
-      <line
-        x1="85"
-        y1="50"
-        x2="85"
-        y2="60"
-        stroke="#1E40AF"
-        strokeWidth="2"
-      />
-      {/* 着陸装置 */}
-      <line
-        x1="25"
-        y1="70"
-        x2="25"
-        y2="75"
-        stroke="#1E40AF"
-        strokeWidth="2"
-      />
-      <line
-        x1="75"
-        y1="70"
-        x2="75"
-        y2="75"
-        stroke="#1E40AF"
-        strokeWidth="2"
-      />
+
+      {/* プロペラ本体（回転） */}
+      <g className="animate-spin-slow" style={{ transformOrigin: '50px 50px' }}>
+        {/* プロペラ1 */}
+        <ellipse
+          cx="50"
+          cy="50"
+          rx="45"
+          ry="8"
+          fill="url(#gradient1)"
+          opacity="0.9"
+        />
+        {/* プロペラ2（90度回転） */}
+        <ellipse
+          cx="50"
+          cy="50"
+          rx="8"
+          ry="45"
+          fill="url(#gradient2)"
+          opacity="0.9"
+        />
+      </g>
+
+      {/* 中心の丸 */}
+      <circle cx="50" cy="50" r="12" fill="#FFB6C1" stroke="#FF69B4" strokeWidth="3" />
+      <circle cx="50" cy="50" r="6" fill="#FFF" stroke="#FF1493" strokeWidth="2" />
+
+      {/* グラデーション定義 */}
+      <defs>
+        <linearGradient id="gradient1" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" style={{ stopColor: '#FF69B4', stopOpacity: 1 }} />
+          <stop offset="50%" style={{ stopColor: '#FFB6C1', stopOpacity: 1 }} />
+          <stop offset="100%" style={{ stopColor: '#FF69B4', stopOpacity: 1 }} />
+        </linearGradient>
+        <linearGradient id="gradient2" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" style={{ stopColor: '#DDA0DD', stopOpacity: 1 }} />
+          <stop offset="50%" style={{ stopColor: '#EE82EE', stopOpacity: 1 }} />
+          <stop offset="100%" style={{ stopColor: '#DDA0DD', stopOpacity: 1 }} />
+        </linearGradient>
+      </defs>
     </svg>
   );
 }
