@@ -1,5 +1,7 @@
 "use client";
 
+import Image from "next/image";
+
 interface HelicopterOverlayProps {
   isOn: boolean;
   facePosition: {
@@ -9,12 +11,14 @@ interface HelicopterOverlayProps {
     height: number;
   } | null;
   faceDetected: boolean;
+  canvasWidth: number;
 }
 
 export default function HelicopterOverlay({
   isOn,
   facePosition,
   faceDetected,
+  canvasWidth,
 }: HelicopterOverlayProps) {
   if (!isOn) {
     return null;
@@ -24,96 +28,51 @@ export default function HelicopterOverlay({
   if (!faceDetected || !facePosition) {
     return (
       <div
-        className="absolute top-1/4 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10"
+        className="absolute top-1/4 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-20"
         style={{ width: "80px", height: "80px" }}
       >
-        <HelicopterIcon />
+        <Image
+          src="/takekop.png"
+          alt="タケコプター"
+          width={80}
+          height={80}
+          className="w-full h-full object-contain drop-shadow-lg"
+          priority
+        />
       </div>
     );
   }
 
   // 顔の位置に基づいてタケコプターを配置
   // ミラー表示のため、x座標を反転
-  const containerWidth = 640; // CameraViewの幅
-  const iconSize = Math.max(60, Math.min(100, facePosition.width * 0.6));
-  const x = containerWidth - facePosition.x; // ミラー反転
+  // facePosition.xは顔の中心X座標、facePosition.yは頭の真ん中のY座標
+  // タケコプターのサイズを顔の幅に基づいて調整
+  const iconSize = Math.max(60, Math.min(120, facePosition.width * 0.7));
+  
+  // ミラー反転: 顔の中心X座標を反転して、頭の真ん中に配置
+  const x = canvasWidth - facePosition.x;
+  // facePosition.yは既に頭の真ん中の位置なので、そのまま使用
   const y = facePosition.y;
 
   return (
     <div
-      className="absolute z-10 transition-all duration-100"
+      className="absolute z-20 transition-all duration-100 pointer-events-none"
       style={{
         left: `${x - iconSize / 2}px`,
-        top: `${y - iconSize * 0.8}px`,
+        top: `${y}px`,
         width: `${iconSize}px`,
         height: `${iconSize}px`,
       }}
     >
-      <HelicopterIcon />
-    </div>
-  );
-}
-
-// タケコプターアイコンコンポーネント
-function HelicopterIcon() {
-  return (
-    <svg
-      viewBox="0 0 100 100"
-      className="w-full h-full drop-shadow-lg animate-bounce-slow"
-      xmlns="http://www.w3.org/2000/svg"
-    >
-      {/* プロペラの軸 */}
-      <rect
-        x="47"
-        y="55"
-        width="6"
-        height="25"
-        rx="3"
-        fill="#FF69B4"
-        stroke="#FF1493"
-        strokeWidth="2"
+      <Image
+        src="/takekop.png"
+        alt="タケコプター"
+        width={iconSize}
+        height={iconSize}
+        className="w-full h-full object-contain drop-shadow-2xl"
+        priority
       />
-
-      {/* プロペラ本体（回転） */}
-      <g className="animate-spin-slow" style={{ transformOrigin: '50px 50px' }}>
-        {/* プロペラ1 */}
-        <ellipse
-          cx="50"
-          cy="50"
-          rx="45"
-          ry="8"
-          fill="url(#gradient1)"
-          opacity="0.9"
-        />
-        {/* プロペラ2（90度回転） */}
-        <ellipse
-          cx="50"
-          cy="50"
-          rx="8"
-          ry="45"
-          fill="url(#gradient2)"
-          opacity="0.9"
-        />
-      </g>
-
-      {/* 中心の丸 */}
-      <circle cx="50" cy="50" r="12" fill="#FFB6C1" stroke="#FF69B4" strokeWidth="3" />
-      <circle cx="50" cy="50" r="6" fill="#FFF" stroke="#FF1493" strokeWidth="2" />
-
-      {/* グラデーション定義 */}
-      <defs>
-        <linearGradient id="gradient1" x1="0%" y1="0%" x2="100%" y2="0%">
-          <stop offset="0%" style={{ stopColor: '#FF69B4', stopOpacity: 1 }} />
-          <stop offset="50%" style={{ stopColor: '#FFB6C1', stopOpacity: 1 }} />
-          <stop offset="100%" style={{ stopColor: '#FF69B4', stopOpacity: 1 }} />
-        </linearGradient>
-        <linearGradient id="gradient2" x1="0%" y1="0%" x2="0%" y2="100%">
-          <stop offset="0%" style={{ stopColor: '#DDA0DD', stopOpacity: 1 }} />
-          <stop offset="50%" style={{ stopColor: '#EE82EE', stopOpacity: 1 }} />
-          <stop offset="100%" style={{ stopColor: '#DDA0DD', stopOpacity: 1 }} />
-        </linearGradient>
-      </defs>
-    </svg>
+    </div>
   );
 }
 

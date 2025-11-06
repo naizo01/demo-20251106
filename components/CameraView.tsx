@@ -55,6 +55,10 @@ export default function CameraView({ isOn }: CameraViewProps) {
     width: number;
     height: number;
   } | null>(null);
+  const [canvasSize, setCanvasSize] = useState<{
+    width: number;
+    height: number;
+  } | null>(null);
 
   // 顔メッシュを描画する関数
   const drawFaceMesh = (
@@ -144,9 +148,15 @@ export default function CameraView({ isOn }: CameraViewProps) {
         const faceCenterX = ((minX + maxX) / 2) * canvas.width;
         const faceTopY = minY * canvas.height;
 
+        // 頭の真ん中（額の中央あたり）の位置を計算
+        // faceTopYは顔の最上部、そこから頭の高さ分（顔の高さの約0.4倍）上にオフセット
+        const headTopY = faceTopY - faceHeight * 0.4;
+        // 頭の真ん中は、頭の上から顔の高さの約0.2倍下の位置
+        const headCenterY = headTopY + faceHeight * 0.2;
+
         setFacePosition({
-          x: faceCenterX,
-          y: faceTopY - faceHeight * 0.3, // 顔の上に少しオフセット
+          x: faceCenterX, // 顔の中心X座標
+          y: headCenterY, // 頭の真ん中のY座標
           width: faceWidth,
           height: faceHeight,
         });
@@ -200,6 +210,7 @@ export default function CameraView({ isOn }: CameraViewProps) {
           if (!isMounted || !video || !canvas) return;
           canvas.width = video.videoWidth;
           canvas.height = video.videoHeight;
+          setCanvasSize({ width: canvas.width, height: canvas.height });
         };
         video.addEventListener("loadedmetadata", metadataHandler);
 
@@ -373,6 +384,7 @@ export default function CameraView({ isOn }: CameraViewProps) {
         isOn={isOn}
         facePosition={facePosition}
         faceDetected={faceDetected}
+        canvasWidth={canvasSize?.width || 640}
       />
     </div>
   );
