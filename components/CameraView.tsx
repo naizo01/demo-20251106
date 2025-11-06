@@ -386,6 +386,7 @@ export default function CameraView({ isOn }: CameraViewProps) {
         facePosition={facePosition}
         faceDetected={faceDetected}
         canvasWidth={canvasSize?.width || 640}
+        canvasHeight={canvasSize?.height || 480}
       />
     </div>
   );

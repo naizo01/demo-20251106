@@ -12,6 +12,7 @@ interface HelicopterOverlayProps {
   } | null;
   faceDetected: boolean;
   canvasWidth: number;
+  canvasHeight: number;
 }
 
 export default function HelicopterOverlay({
@@ -19,6 +20,7 @@ export default function HelicopterOverlay({
   facePosition,
   faceDetected,
   canvasWidth,
+  canvasHeight,
 }: HelicopterOverlayProps) {
   // ONの状態で、顔が検出されている場合のみタケコプターを表示
   if (!isOn || !faceDetected || !facePosition) {
@@ -29,7 +31,7 @@ export default function HelicopterOverlay({
   // ミラー表示のため、x座標を反転
   // facePosition.xは顔の中心X座標、facePosition.yは頭の真ん中のY座標
   // タケコプターのサイズを顔の幅に基づいて調整（顔の大きさに応じてスケール）
-  const iconSize = Math.max(60, Math.min(120, facePosition.width * 0.7));
+  const iconSize = Math.max(150, Math.min(400, facePosition.width * 1.2));
   
   // ミラー反転: 顔の中心X座標を反転して、頭の真ん中に配置
   const x = canvasWidth - facePosition.x;
@@ -45,7 +47,7 @@ export default function HelicopterOverlay({
         top: `${y}px`,
         width: `${iconSize}px`,
         height: `${iconSize}px`,
-        transition: "left 0.1s ease-out, top 0.1s ease-out, width 0.1s ease-out, height 0.1s ease-out",
+        // transitionを削除してリアルタイムで追従させる
       }}
     >
       <Image
